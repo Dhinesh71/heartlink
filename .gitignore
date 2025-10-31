@@ -21,3 +21,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Ignore the real env.json but keep the example
+/public/env.json
+!/public/env.json.example

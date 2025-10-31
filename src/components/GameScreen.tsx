@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SpinWheel } from './SpinWheel';
 import { QuestionCard } from './QuestionCard';
 import { HeartMeter } from './HeartMeter';
+import { HistoryBox } from './HistoryBox';
 import type { Player, GameSession, GameRound } from '../types/game';
 import { getRandomQuestion } from '../data/questions';
 
@@ -24,6 +25,7 @@ export const GameScreen = ({
   const [gameState, setGameState] = useState<GameState>('spin');
   const [currentRound, setCurrentRound] = useState<GameRound | null>(null);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [rounds, setRounds] = useState<GameRound[]>([]);
 
   const activePlayer = players[currentPlayerIndex];
 
@@ -44,10 +46,11 @@ export const GameScreen = ({
     setGameState('question');
   };
 
-  const handleQuestionComplete = () => {
+  const handleQuestionComplete = (answer?: string) => {
     if (currentRound) {
-      const completedRound = { ...currentRound, completed: true };
+      const completedRound = { ...currentRound, completed: true, answer };
       onRoundComplete(completedRound);
+      setRounds(prev => [...prev, completedRound]);
 
       if (session.heart_level + 10 >= 100) {
         onGameComplete();
@@ -65,6 +68,7 @@ export const GameScreen = ({
         <div className="mb-8">
           <HeartMeter level={session.heart_level} />
         </div>
+        <HistoryBox rounds={rounds} />
 
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">

@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 
 interface QuestionCardProps {
   type: 'truth' | 'dare';
   question: string;
-  onComplete: () => void;
+  onComplete: (answer?: string) => void;
   playerNickname: string;
 }
 
 export const QuestionCard = ({ type, question, onComplete, playerNickname }: QuestionCardProps) => {
+  const [answer, setAnswer] = useState('');
   return (
     <div className="w-full max-w-lg mx-auto">
       <div
@@ -31,8 +33,21 @@ export const QuestionCard = ({ type, question, onComplete, playerNickname }: Que
           </p>
         </div>
 
+        {type === 'truth' && (
+          <div className="mb-4">
+            <textarea
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder="Type your answer here..."
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-white/40
+                       focus:outline-none focus:ring-2 focus:ring-[#9f86c0] focus:border-transparent resize-none"
+              rows={3}
+            />
+          </div>
+        )}
+
         <button
-          onClick={onComplete}
+          onClick={() => onComplete(type === 'truth' ? answer : undefined)}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-[#9f86c0] to-[#e0b1cb]
                      text-white font-bold rounded-full hover:shadow-[0_0_25px_rgba(224,177,203,0.5)] transition-all"
         >

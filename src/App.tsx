@@ -23,12 +23,15 @@ function App() {
   useEffect(() => {
     if (!room) return;
 
+    // First, get the initial state
+    getPlayersInRoom(room.id).then(setPlayers);
+
     const channel = supabase
       .channel(`room:${room.id}`)
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'players',
           filter: `room_id=eq.${room.id}`,
@@ -95,8 +98,28 @@ function App() {
 
     if (player) {
       setCurrentPlayer(player);
+      // Fetch players immediately after adding new player
       const allPlayers = await getPlayersInRoom(room.id);
       setPlayers(allPlayers);
+      
+      // Subscribe to real-time player updates for this specific room
+      const playersChannel = supabase
+        .channel(`players:${room.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'players',
+            filter: `room_id=eq.${room.id}`,
+          },
+          async () => {
+            const updatedPlayers = await getPlayersInRoom(room.id);
+            setPlayers(updatedPlayers);
+          }
+        )
+        .subscribe();
+
       setAppState('lobby');
     }
   };

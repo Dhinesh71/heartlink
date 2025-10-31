@@ -38,4 +38,5 @@ export interface GameRound {
   player_id: string;
   completed: boolean;
   completed_at?: string;
+  answer?: string;
 }

@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import type { Player, GameMode } from '../types/game';
-import { subscribeToRoom } from '../services/roomService';
 
 interface LobbyScreenProps {
   roomCode: string;
@@ -10,37 +9,10 @@ interface LobbyScreenProps {
   onStartGame: (mode: GameMode) => void;
 }
 
-export const LobbyScreen = ({ roomCode, players: initialPlayers, currentPlayer, onStartGame }: LobbyScreenProps) => {
+export const LobbyScreen = ({ roomCode, players, currentPlayer, onStartGame }: LobbyScreenProps) => {
   const [selectedMode, setSelectedMode] = useState<GameMode>('friendly');
   const [copied, setCopied] = useState(false);
-  const [players, setPlayers] = useState(initialPlayers);
   const isCreator = currentPlayer.is_creator;
-
-  useEffect(() => {
-    // Subscribe to room updates when component mounts
-    let unsubscribe: (() => void) | undefined;
-    
-    const setupSubscription = async () => {
-      // Get the room ID from the first player (current player)
-      const roomId = currentPlayer.room_id;
-      
-      unsubscribe = await subscribeToRoom(
-        roomId,
-        (updatedPlayers) => {
-          setPlayers(updatedPlayers);
-        }
-      );
-    };
-
-    setupSubscription();
-
-    // Cleanup subscription when component unmounts
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [currentPlayer.room_id]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomCode);
@@ -137,9 +109,11 @@ export const LobbyScreen = ({ roomCode, players: initialPlayers, currentPlayer, 
             </div>
           )}
 
-          {!isCreator && players.length === 2 && (
+          {!isCreator && (
             <div className="text-center text-white/60">
-              Waiting for host to start the game...
+              {players.length === 2
+                ? 'Waiting for host to start the game...'
+                : 'Waiting for host to arrive...'}
             </div>
           )}
         </div>

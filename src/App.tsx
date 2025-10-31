@@ -99,7 +99,11 @@ function App() {
   const handleProfileComplete = async (nickname: string, avatar: string) => {
     if (!room) return;
 
-    const isCreator = room.room_code === pendingRoomCode;
+    // Check if there are already players in the room
+    const existingPlayers = await getPlayersInRoom(room.id);
+    // If no players exist, this is the creator. Otherwise, this is a joining player.
+    const isCreator = existingPlayers.length === 0;
+
     const { player } = await addPlayer(room.id, nickname, avatar, isCreator);
 
     if (player) {

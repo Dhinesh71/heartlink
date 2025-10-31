@@ -24,33 +24,51 @@ function App() {
 
     let unsubscribePlayers: (() => void) | undefined;
     let unsubscribeGameSession: (() => void) | undefined;
+    let mounted = true;
 
     const initializeSubscriptions = async () => {
-      // Get initial players
-      const initialPlayers = await getPlayersInRoom(room.id);
-      setPlayers(initialPlayers);
+      try {
+        // Get initial players
+        const initialPlayers = await getPlayersInRoom(room.id);
+        if (!mounted) return;
+        setPlayers(initialPlayers);
 
-      // Subscribe to player changes
-      unsubscribePlayers = await subscribeToRoom(room.id, setPlayers);
+        // Subscribe to player changes
+        unsubscribePlayers = await subscribeToRoom(room.id, (updatedPlayers) => {
+          if (mounted) {
+            setPlayers(updatedPlayers);
+          }
+        });
+        if (!mounted) return;
 
-      // Check if game session already exists
-      const existingSession = await getGameSession(room.id);
-      if (existingSession) {
-        setSession(existingSession);
-        const existingRounds = await getGameRounds(existingSession.id);
-        setRounds(existingRounds);
-        setAppState('game');
-      }
+        // Check if game session already exists
+        const existingSession = await getGameSession(room.id);
+        if (!mounted) return;
 
-      // Subscribe to game session changes - this notifies ALL players when game starts
-      unsubscribeGameSession = await subscribeToGameSession(room.id, async (gameSession) => {
-        if (gameSession) {
-          setSession(gameSession);
-          const currentRounds = await getGameRounds(gameSession.id);
-          setRounds(currentRounds);
-          setAppState('game');
+        if (existingSession) {
+          setSession(existingSession);
+          const existingRounds = await getGameRounds(existingSession.id);
+          if (mounted) {
+            setRounds(existingRounds);
+            setAppState('game');
+          }
         }
-      });
+
+        // Subscribe to game session changes - this notifies ALL players when game starts
+        unsubscribeGameSession = await subscribeToGameSession(room.id, async (gameSession) => {
+          if (gameSession && mounted) {
+            console.log('Game session update received, transitioning to game screen');
+            setSession(gameSession);
+            const currentRounds = await getGameRounds(gameSession.id);
+            if (mounted) {
+              setRounds(currentRounds);
+              setAppState('game');
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error initializing subscriptions:', error);
+      }
     };
 
     initializeSubscriptions();
@@ -67,17 +85,20 @@ function App() {
           filter: `id=eq.${room.id}`,
         },
         (payload) => {
-          const updatedRoom = payload.new as Room;
-          setRoom(updatedRoom);
+          if (mounted) {
+            const updatedRoom = payload.new as Room;
+            setRoom(updatedRoom);
+          }
         }
       )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Room and subscriptions established');
+        if (status === 'SUBSCRIBED' && mounted) {
+          console.log('Room subscriptions established for room:', room.id);
         }
       });
 
     return () => {
+      mounted = false;
       if (unsubscribePlayers) unsubscribePlayers();
       if (unsubscribeGameSession) unsubscribeGameSession();
       supabase.removeChannel(channel);
@@ -191,6 +212,25 @@ function App() {
     setRounds([]);
     setAppState('welcome');
   };
+
+  // Polling fallback: Periodically check for game session when in lobby
+  // This ensures Player 2 detects game start even if realtime subscription has issues
+  useEffect(() => {
+    if (appState !== 'lobby' || !room) return;
+
+    const pollInterval = setInterval(async () => {
+      const gameSession = await getGameSession(room.id);
+      if (gameSession && !session) {
+        console.log('Game session detected via polling fallback');
+        setSession(gameSession);
+        const gameRounds = await getGameRounds(gameSession.id);
+        setRounds(gameRounds);
+        setAppState('game');
+      }
+    }, 1500);
+
+    return () => clearInterval(pollInterval);
+  }, [appState, room, session]);
 
   return (
     <div

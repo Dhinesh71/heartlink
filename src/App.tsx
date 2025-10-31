@@ -4,7 +4,7 @@ import { ProfileSetup } from './components/ProfileSetup';
 import { LobbyScreen } from './components/LobbyScreen';
 import { GameScreen } from './components/GameScreen';
 import { MemoryBox } from './components/MemoryBox';
-import { createRoom, joinRoom, addPlayer, getPlayersInRoom, updateRoomStatus } from './services/roomService';
+import { createRoom, joinRoom, addPlayer, getPlayersInRoom, updateRoomStatus, subscribeToRoom } from './services/roomService';
 import { createGameSession, getGameSession, createGameRound, updateHeartLevel, updateCurrentRound, getGameRounds, completeGameSession } from './services/gameService';
 import { supabase } from './lib/supabase';
 import type { Room, Player, GameSession, GameMode, GameRound } from './types/game';
@@ -18,7 +18,6 @@ function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [session, setSession] = useState<GameSession | null>(null);
   const [rounds, setRounds] = useState<GameRound[]>([]);
-  const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!room) return;
@@ -28,11 +27,9 @@ function App() {
 
     // Subscribe to player changes using the helper
     let unsubscribePlayers: (() => void) | undefined;
-    (async () => {
-      unsubscribePlayers = await import('./services/roomService').then(mod =>
-        mod.subscribeToRoom(room.id, setPlayers)
-      );
-    })();
+    subscribeToRoom(room.id, setPlayers).then(unsub => {
+      unsubscribePlayers = unsub;
+    });
 
     // Subscribe to room status changes (for game start)
     const channel = supabase
@@ -74,7 +71,6 @@ function App() {
     const { room: newRoom } = await createRoom();
     if (newRoom) {
       setRoom(newRoom);
-      setPendingRoomCode(newRoom.room_code);
       setAppState('profile');
     }
   };
@@ -83,7 +79,6 @@ function App() {
     const { room: foundRoom } = await joinRoom(roomCode);
     if (foundRoom) {
       setRoom(foundRoom);
-      setPendingRoomCode(roomCode);
       setAppState('profile');
     }
   };
@@ -155,7 +150,6 @@ function App() {
     setPlayers([]);
     setSession(null);
     setRounds([]);
-    setPendingRoomCode(null);
     setAppState('welcome');
   };
 

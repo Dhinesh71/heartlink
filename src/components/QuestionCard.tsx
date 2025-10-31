@@ -6,9 +6,10 @@ interface QuestionCardProps {
   question: string;
   onComplete: (answer?: string) => void;
   playerNickname: string;
+  isSubmitting?: boolean;
 }
 
-export const QuestionCard = ({ type, question, onComplete, playerNickname }: QuestionCardProps) => {
+export const QuestionCard = ({ type, question, onComplete, playerNickname, isSubmitting = false }: QuestionCardProps) => {
   const [answer, setAnswer] = useState('');
   return (
     <div className="w-full max-w-lg mx-auto">
@@ -48,11 +49,13 @@ export const QuestionCard = ({ type, question, onComplete, playerNickname }: Que
 
         <button
           onClick={() => onComplete(type === 'truth' ? answer : undefined)}
+          disabled={isSubmitting}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-[#9f86c0] to-[#e0b1cb]
-                     text-white font-bold rounded-full hover:shadow-[0_0_25px_rgba(224,177,203,0.5)] transition-all"
+                     text-white font-bold rounded-full hover:shadow-[0_0_25px_rgba(224,177,203,0.5)] transition-all
+                     disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <CheckCircle className="w-5 h-5" />
-          Done!
+          {isSubmitting ? 'Submitting...' : 'Done!'}
         </button>
       </div>
     </div>

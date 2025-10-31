@@ -36,7 +36,8 @@ export const createGameRound = async (
   roundNumber: number,
   type: 'truth' | 'dare',
   question: string,
-  playerId: string
+  playerId: string,
+  answer?: string
 ): Promise<{ round: GameRound; error?: string }> => {
   const supabase = await getSupabase();
   const { data, error } = await supabase
@@ -47,6 +48,8 @@ export const createGameRound = async (
       type,
       question,
       player_id: playerId,
+      completed: true,
+      completed_at: new Date().toISOString(),
     }])
     .select()
     .maybeSingle();
@@ -156,4 +159,39 @@ export const initializeFirstPlayer = async (
     .from('game_sessions')
     .update({ current_player_id: firstPlayerId })
     .eq('id', sessionId);
+};
+
+export const subscribeToGameRounds = async (
+  sessionId: string,
+  onRoundsUpdate: (rounds: GameRound[]) => void
+): Promise<() => void> => {
+  const supabase = await getSupabase();
+
+  const subscription = supabase
+    .channel(`game-rounds:${sessionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'game_rounds',
+        filter: `session_id=eq.${sessionId}`
+      },
+      async () => {
+        console.log('Game round change detected for session:', sessionId);
+        const rounds = await getGameRounds(sessionId);
+        console.log('Updated rounds:', rounds);
+        onRoundsUpdate(rounds);
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('Game rounds subscription established for session:', sessionId);
+      }
+    });
+
+  return () => {
+    console.log('Unsubscribing from game rounds changes for session:', sessionId);
+    subscription.unsubscribe();
+  };
 };

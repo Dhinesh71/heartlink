@@ -10,9 +10,8 @@ interface GameScreenProps {
   session: GameSession;
   players: Player[];
   currentPlayer: Player;
+  rounds: GameRound[];
   onRoundComplete: (round: GameRound) => void;
-  onGameComplete: () => void;
-  onSessionUpdate?: (session: GameSession) => void;
 }
 
 type GameState = 'spin' | 'question';
@@ -21,12 +20,12 @@ export const GameScreen = ({
   session,
   players,
   currentPlayer,
+  rounds,
   onRoundComplete,
-  onGameComplete,
 }: GameScreenProps) => {
   const [gameState, setGameState] = useState<GameState>('spin');
   const [currentRound, setCurrentRound] = useState<GameRound | null>(null);
-  const [rounds, setRounds] = useState<GameRound[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activePlayer = players.find(p => p.id === session.current_player_id) || players[0];
   const isCurrentPlayersTurn = currentPlayer.id === session.current_player_id;
@@ -49,18 +48,14 @@ export const GameScreen = ({
     setGameState('question');
   };
 
-  const handleQuestionComplete = (answer?: string) => {
-    if (currentRound) {
+  const handleQuestionComplete = async (answer?: string) => {
+    if (currentRound && !isSubmitting) {
+      setIsSubmitting(true);
       const completedRound = { ...currentRound, completed: true, answer };
-      onRoundComplete(completedRound);
-      setRounds(prev => [...prev, completedRound]);
-
-      if (session.heart_level + 10 >= 100) {
-        onGameComplete();
-      } else {
-        setGameState('spin');
-        setCurrentRound(null);
-      }
+      await onRoundComplete(completedRound);
+      setGameState('spin');
+      setCurrentRound(null);
+      setIsSubmitting(false);
     }
   };
 
@@ -74,7 +69,7 @@ export const GameScreen = ({
 
         <div className="text-center mb-4 sm:mb-6">
           <div className="inline-flex flex-wrap items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-            <span className="text-white/60 text-xs sm:text-sm">Round {session.current_round + 1}</span>
+            <span className="text-white/60 text-xs sm:text-sm">Round {rounds.length + 1}</span>
             <span className="text-white/40 hidden sm:inline">•</span>
             <span className="text-white font-medium text-sm sm:text-base">{activePlayer.avatar} {activePlayer.nickname}</span>
             {isSpectating && (
@@ -112,6 +107,7 @@ export const GameScreen = ({
               question={currentRound.question}
               playerNickname={activePlayer.nickname}
               onComplete={handleQuestionComplete}
+              isSubmitting={isSubmitting}
             />
           )}
         </div>

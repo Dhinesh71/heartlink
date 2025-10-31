@@ -5,7 +5,7 @@ import { LobbyScreen } from './components/LobbyScreen';
 import { GameScreen } from './components/GameScreen';
 import { MemoryBox } from './components/MemoryBox';
 import { createRoom, joinRoom, addPlayer, getPlayersInRoom, updateRoomStatus, subscribeToRoom } from './services/roomService';
-import { createGameSession, getGameSession, createGameRound, updateHeartLevel, updateCurrentRound, getGameRounds, completeGameSession, subscribeToGameSession, initializeFirstPlayer, setCurrentPlayer } from './services/gameService';
+import { createGameSession, getGameSession, createGameRound, updateHeartLevel, updateCurrentRound, getGameRounds, completeGameSession, subscribeToGameSession, subscribeToGameRounds, initializeFirstPlayer, setCurrentPlayer } from './services/gameService';
 import { supabase } from './lib/supabase';
 import type { Room, Player, GameSession, GameMode, GameRound } from './types/game';
 
@@ -18,22 +18,22 @@ function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [session, setSession] = useState<GameSession | null>(null);
   const [rounds, setRounds] = useState<GameRound[]>([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     if (!room) return;
 
     let unsubscribePlayers: (() => void) | undefined;
     let unsubscribeGameSession: (() => void) | undefined;
+    let unsubscribeRounds: (() => void) | undefined;
     let mounted = true;
 
     const initializeSubscriptions = async () => {
       try {
-        // Get initial players
         const initialPlayers = await getPlayersInRoom(room.id);
         if (!mounted) return;
         setPlayers(initialPlayers);
 
-        // Subscribe to player changes
         unsubscribePlayers = await subscribeToRoom(room.id, (updatedPlayers) => {
           if (mounted) {
             setPlayers(updatedPlayers);
@@ -41,7 +41,6 @@ function App() {
         });
         if (!mounted) return;
 
-        // Check if game session already exists
         const existingSession = await getGameSession(room.id);
         if (!mounted) return;
 
@@ -52,17 +51,31 @@ function App() {
             setRounds(existingRounds);
             setAppState('game');
           }
+
+          unsubscribeRounds = await subscribeToGameRounds(existingSession.id, (updatedRounds) => {
+            if (mounted) {
+              setRounds(updatedRounds);
+            }
+          });
         }
 
-        // Subscribe to game session changes - this notifies ALL players when game starts
         unsubscribeGameSession = await subscribeToGameSession(room.id, async (gameSession) => {
           if (gameSession && mounted) {
-            console.log('Game session update received, transitioning to game screen');
+            console.log('Game session update received');
             setSession(gameSession);
-            const currentRounds = await getGameRounds(gameSession.id);
-            if (mounted) {
-              setRounds(currentRounds);
-              setAppState('game');
+            if (appState === 'lobby') {
+              const currentRounds = await getGameRounds(gameSession.id);
+              if (mounted) {
+                setRounds(currentRounds);
+                setAppState('game');
+
+                if (unsubscribeRounds) unsubscribeRounds();
+                unsubscribeRounds = await subscribeToGameRounds(gameSession.id, (updatedRounds) => {
+                  if (mounted) {
+                    setRounds(updatedRounds);
+                  }
+                });
+              }
             }
           }
         });
@@ -73,7 +86,6 @@ function App() {
 
     initializeSubscriptions();
 
-    // Subscribe to room status changes
     const channel = supabase
       .channel(`room-status:${room.id}`)
       .on(
@@ -101,9 +113,10 @@ function App() {
       mounted = false;
       if (unsubscribePlayers) unsubscribePlayers();
       if (unsubscribeGameSession) unsubscribeGameSession();
+      if (unsubscribeRounds) unsubscribeRounds();
       supabase.removeChannel(channel);
     };
-  }, [room?.id]);
+  }, [room?.id, appState]);
 
   const handleCreateRoom = async () => {
     const { room: newRoom } = await createRoom();
@@ -166,43 +179,40 @@ function App() {
   };
 
   const handleRoundComplete = async (round: GameRound) => {
-    if (!session || !room) return;
+    if (!session || !room || isTransitioning) return;
 
-    await createGameRound(
-      session.id,
-      round.round_number,
-      round.type,
-      round.question,
-      round.player_id
-    );
+    setIsTransitioning(true);
 
-    const newHeartLevel = Math.min(100, session.heart_level + 10);
-    await updateHeartLevel(session.id, newHeartLevel);
-    await updateCurrentRound(session.id, round.round_number);
+    try {
+      await createGameRound(
+        session.id,
+        round.round_number,
+        round.type,
+        round.question,
+        round.player_id,
+        round.answer
+      );
 
-    const nextPlayerIndex = (players.findIndex(p => p.id === round.player_id) + 1) % players.length;
-    const nextPlayerId = players[nextPlayerIndex].id;
-    await setCurrentPlayer(session.id, nextPlayerId);
+      const newHeartLevel = Math.min(100, session.heart_level + 10);
+      await updateHeartLevel(session.id, newHeartLevel);
+      await updateCurrentRound(session.id, round.round_number);
 
-    setSession({
-      ...session,
-      heart_level: newHeartLevel,
-      current_round: round.round_number,
-      current_player_id: nextPlayerId
-    });
-    setRounds([...rounds, round]);
+      if (newHeartLevel >= 100) {
+        await completeGameSession(session.id);
+        await updateRoomStatus(room.id, 'completed');
+        setAppState('memory');
+      } else {
+        const nextPlayerIndex = (players.findIndex(p => p.id === round.player_id) + 1) % players.length;
+        const nextPlayerId = players[nextPlayerIndex].id;
+        await setCurrentPlayer(session.id, nextPlayerId);
+      }
+    } catch (error) {
+      console.error('Error completing round:', error);
+    } finally {
+      setIsTransitioning(false);
+    }
   };
 
-  const handleGameComplete = async () => {
-    if (!session || !room) return;
-
-    await completeGameSession(session.id);
-    await updateRoomStatus(room.id, 'completed');
-
-    const allRounds = await getGameRounds(session.id);
-    setRounds(allRounds);
-    setAppState('memory');
-  };
 
   const handlePlayAgain = () => {
     setRoom(null);
@@ -279,8 +289,8 @@ function App() {
             session={session}
             players={players}
             currentPlayer={currentPlayer}
+            rounds={rounds}
             onRoundComplete={handleRoundComplete}
-            onGameComplete={handleGameComplete}
           />
         )}
 

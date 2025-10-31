@@ -128,3 +128,25 @@ export const subscribeToGameSession = async (
     subscription.unsubscribe();
   };
 };
+
+export const setCurrentPlayer = async (
+  sessionId: string,
+  playerId: string
+): Promise<void> => {
+  const supabase = await getSupabase();
+  await supabase
+    .from('game_sessions')
+    .update({ current_player_id: playerId })
+    .eq('id', sessionId);
+};
+
+export const initializeFirstPlayer = async (
+  sessionId: string,
+  firstPlayerId: string
+): Promise<void> => {
+  const supabase = await getSupabase();
+  await supabase
+    .from('game_sessions')
+    .update({ current_player_id: firstPlayerId })
+    .eq('id', sessionId);
+};

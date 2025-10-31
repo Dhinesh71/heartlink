@@ -5,7 +5,7 @@ import { LobbyScreen } from './components/LobbyScreen';
 import { GameScreen } from './components/GameScreen';
 import { MemoryBox } from './components/MemoryBox';
 import { createRoom, joinRoom, addPlayer, getPlayersInRoom, updateRoomStatus, subscribeToRoom } from './services/roomService';
-import { createGameSession, getGameSession, createGameRound, updateHeartLevel, updateCurrentRound, getGameRounds, completeGameSession, subscribeToGameSession } from './services/gameService';
+import { createGameSession, getGameSession, createGameRound, updateHeartLevel, updateCurrentRound, getGameRounds, completeGameSession, subscribeToGameSession, initializeFirstPlayer, setCurrentPlayer } from './services/gameService';
 import { supabase } from './lib/supabase';
 import type { Room, Player, GameSession, GameMode, GameRound } from './types/game';
 
@@ -114,13 +114,14 @@ function App() {
 
     const { session: newSession } = await createGameSession(room.id, mode);
     if (newSession) {
-      setSession(newSession);
+      await initializeFirstPlayer(newSession.id, players[0].id);
+      setSession({ ...newSession, current_player_id: players[0].id });
       setAppState('game');
     }
   };
 
   const handleRoundComplete = async (round: GameRound) => {
-    if (!session) return;
+    if (!session || !room) return;
 
     await createGameRound(
       session.id,
@@ -134,7 +135,16 @@ function App() {
     await updateHeartLevel(session.id, newHeartLevel);
     await updateCurrentRound(session.id, round.round_number);
 
-    setSession({ ...session, heart_level: newHeartLevel, current_round: round.round_number });
+    const nextPlayerIndex = (players.findIndex(p => p.id === round.player_id) + 1) % players.length;
+    const nextPlayerId = players[nextPlayerIndex].id;
+    await setCurrentPlayer(session.id, nextPlayerId);
+
+    setSession({
+      ...session,
+      heart_level: newHeartLevel,
+      current_round: round.round_number,
+      current_player_id: nextPlayerId
+    });
     setRounds([...rounds, round]);
   };
 

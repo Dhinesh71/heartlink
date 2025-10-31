@@ -25,6 +25,7 @@ export interface GameSession {
   game_mode: GameMode;
   current_round: number;
   heart_level: number;
+  current_player_id?: string;
   started_at: string;
   completed_at?: string;
 }

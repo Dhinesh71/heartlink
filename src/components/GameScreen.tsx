@@ -12,6 +12,7 @@ interface GameScreenProps {
   currentPlayer: Player;
   onRoundComplete: (round: GameRound) => void;
   onGameComplete: () => void;
+  onSessionUpdate?: (session: GameSession) => void;
 }
 
 type GameState = 'spin' | 'question';
@@ -19,15 +20,17 @@ type GameState = 'spin' | 'question';
 export const GameScreen = ({
   session,
   players,
+  currentPlayer,
   onRoundComplete,
   onGameComplete,
 }: GameScreenProps) => {
   const [gameState, setGameState] = useState<GameState>('spin');
   const [currentRound, setCurrentRound] = useState<GameRound | null>(null);
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [rounds, setRounds] = useState<GameRound[]>([]);
 
-  const activePlayer = players[currentPlayerIndex];
+  const activePlayer = players.find(p => p.id === session.current_player_id) || players[0];
+  const isCurrentPlayersTurn = currentPlayer.id === session.current_player_id;
+  const isSpectating = !isCurrentPlayersTurn;
 
   const handleSpinResult = (result: 'truth' | 'dare') => {
     const question = getRandomQuestion(session.game_mode, result);
@@ -55,7 +58,6 @@ export const GameScreen = ({
       if (session.heart_level + 10 >= 100) {
         onGameComplete();
       } else {
-        setCurrentPlayerIndex((prev) => (prev + 1) % players.length);
         setGameState('spin');
         setCurrentRound(null);
       }
@@ -75,6 +77,11 @@ export const GameScreen = ({
             <span className="text-white/60 text-sm">Round {session.current_round + 1}</span>
             <span className="text-white/40">•</span>
             <span className="text-white font-medium">{activePlayer.avatar} {activePlayer.nickname}</span>
+            {isSpectating && (
+              <span className="text-yellow-300 text-xs bg-yellow-300/20 px-2 py-1 rounded-full ml-2">
+                Your turn next
+              </span>
+            )}
           </div>
         </div>
 
@@ -85,7 +92,18 @@ export const GameScreen = ({
           }}
         >
           {gameState === 'spin' && (
-            <SpinWheel onResult={handleSpinResult} />
+            <>
+              {isSpectating && (
+                <div className="text-center">
+                  <div className="text-5xl mb-4">👀</div>
+                  <div className="text-white text-lg font-medium mb-2">Waiting for {activePlayer.nickname}</div>
+                  <div className="text-white/60">You'll play next!</div>
+                </div>
+              )}
+              {isCurrentPlayersTurn && (
+                <SpinWheel onResult={handleSpinResult} />
+              )}
+            </>
           )}
 
           {gameState === 'question' && currentRound && (

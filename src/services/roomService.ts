@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabase';
 import type { Room, Player } from '../types/game';
 
 export const generateRoomCode = (): string => {
@@ -13,6 +13,7 @@ export const generateRoomCode = (): string => {
 export const createRoom = async (): Promise<{ room: Room; error?: string }> => {
   const roomCode = generateRoomCode();
 
+  const supabase = await getSupabase();
   const { data, error } = await supabase
     .from('rooms')
     .insert([{ room_code: roomCode }])
@@ -27,6 +28,7 @@ export const createRoom = async (): Promise<{ room: Room; error?: string }> => {
 };
 
 export const joinRoom = async (roomCode: string): Promise<{ room: Room | null; error?: string }> => {
+  const supabase = await getSupabase();
   const { data, error } = await supabase
     .from('rooms')
     .select()
@@ -51,6 +53,7 @@ export const addPlayer = async (
   avatar: string,
   isCreator: boolean
 ): Promise<{ player: Player; error?: string }> => {
+  const supabase = await getSupabase();
   const { data, error } = await supabase
     .from('players')
     .insert([{ room_id: roomId, nickname, avatar, is_creator: isCreator }])
@@ -65,6 +68,7 @@ export const addPlayer = async (
 };
 
 export const getPlayersInRoom = async (roomId: string): Promise<Player[]> => {
+  const supabase = await getSupabase();
   const { data } = await supabase
     .from('players')
     .select()
@@ -74,6 +78,7 @@ export const getPlayersInRoom = async (roomId: string): Promise<Player[]> => {
 };
 
 export const updateRoomStatus = async (roomId: string, status: string): Promise<void> => {
+  const supabase = await getSupabase();
   await supabase
     .from('rooms')
     .update({ status })

@@ -33,9 +33,12 @@ function App() {
 
     // Subscribe to game session changes - this notifies ALL players when game starts
     let unsubscribeGameSession: (() => void) | undefined;
-    subscribeToGameSession(room.id, (gameSession) => {
+    subscribeToGameSession(room.id, async (gameSession) => {
       if (gameSession && gameSession.started_at) {
+        console.log('Game session started, transitioning to game:', gameSession);
         setSession(gameSession);
+        const currentRounds = await getGameRounds(gameSession.id);
+        setRounds(currentRounds);
         setAppState('game');
       }
     }).then(unsub => {
@@ -115,8 +118,6 @@ function App() {
     const { session: newSession } = await createGameSession(room.id, mode);
     if (newSession) {
       await initializeFirstPlayer(newSession.id, players[0].id);
-      setSession({ ...newSession, current_player_id: players[0].id });
-      setAppState('game');
     }
   };
 

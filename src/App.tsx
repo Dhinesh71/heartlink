@@ -23,30 +23,24 @@ function App() {
   useEffect(() => {
     if (!room) return;
 
-    // First, get the initial state
+    // Get initial players
     getPlayersInRoom(room.id).then(setPlayers);
 
-    // Create a single channel for both players and room updates
+    // Subscribe to player changes using the helper
+    let unsubscribePlayers: (() => void) | undefined;
+    (async () => {
+      unsubscribePlayers = await import('./services/roomService').then(mod =>
+        mod.subscribeToRoom(room.id, setPlayers)
+      );
+    })();
+
+    // Subscribe to room status changes (for game start)
     const channel = supabase
-      .channel(`room:${room.id}`)
+      .channel(`room-status:${room.id}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'players',
-          filter: `room_id=eq.${room.id}`,
-        },
-        async (payload) => {
-          console.log('Players update:', payload);
-          const updatedPlayers = await getPlayersInRoom(room.id);
-          setPlayers(updatedPlayers);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events
+          event: '*',
           schema: 'public',
           table: 'rooms',
           filter: `id=eq.${room.id}`,
@@ -55,8 +49,6 @@ function App() {
           console.log('Room update:', payload);
           const updatedRoom = payload.new as Room;
           setRoom(updatedRoom);
-          
-          // If the room status changed to playing, set up the game session
           if (updatedRoom.status === 'playing') {
             const gameSession = await getGameSession(room.id);
             if (gameSession) {
@@ -68,15 +60,15 @@ function App() {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Real-time subscription established for room:', room.id);
+          console.log('Room status subscription established for room:', room.id);
         }
       });
 
     return () => {
-      console.log('Cleaning up subscription for room:', room.id);
+      if (unsubscribePlayers) unsubscribePlayers();
       supabase.removeChannel(channel);
     };
-  }, [room?.id]); // Only re-subscribe when room ID changes
+  }, [room?.id]);
 
   const handleCreateRoom = async () => {
     const { room: newRoom } = await createRoom();

@@ -31,11 +31,21 @@ function App() {
       unsubscribePlayers = unsub;
     });
 
+    // Check if game session already exists
+    getGameSession(room.id).then(existingSession => {
+      if (existingSession) {
+        console.log('Existing game session found:', existingSession);
+        setSession(existingSession);
+        getGameRounds(existingSession.id).then(setRounds);
+        setAppState('game');
+      }
+    });
+
     // Subscribe to game session changes - this notifies ALL players when game starts
     let unsubscribeGameSession: (() => void) | undefined;
     subscribeToGameSession(room.id, async (gameSession) => {
-      if (gameSession && gameSession.started_at) {
-        console.log('Game session started, transitioning to game:', gameSession);
+      if (gameSession) {
+        console.log('Game session detected:', gameSession);
         setSession(gameSession);
         const currentRounds = await getGameRounds(gameSession.id);
         setRounds(currentRounds);

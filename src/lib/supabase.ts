@@ -62,3 +62,23 @@ export async function getSupabase(): Promise<SupabaseClient> {
 
 // Also export a convenience promise-based client for callers that prefer to await a variable
 export const supabasePromise: Promise<SupabaseClient> = getSupabase();
+
+// Export a synchronous `supabase` binding so existing imports (e.g. `import { supabase } from './lib/supabase'`)
+// continue to work. If the real client is available at module initialization (build-time envs),
+// the proxy will forward calls to it. Otherwise the proxy throws a clear error explaining how
+// to provide credentials (build-time VITE_* envs or runtime /env.json or window globals).
+export const supabase: SupabaseClient = ((): SupabaseClient => {
+	if (client) return client;
+
+		const handler: ProxyHandler<object> = {
+			get(_, prop) {
+				if (client) return Reflect.get(client as unknown as object, prop as PropertyKey);
+				throw new Error(
+					'Supabase client not initialized. Provide VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY at build time, or use runtime /env.json or window.__SUPABASE_URL / window.__SUPABASE_ANON_KEY.'
+				);
+			},
+		};
+
+	// Return a proxy that matches the SupabaseClient surface
+	return new Proxy({}, handler) as unknown as SupabaseClient;
+})();

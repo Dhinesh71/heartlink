@@ -49,7 +49,10 @@ function App() {
           const existingRounds = await getGameRounds(existingSession.id);
           if (mounted) {
             setRounds(existingRounds);
-            setAppState('game');
+            if (appState !== 'game') {
+              setAppState('game');
+              console.log('[Sync] Transitioning to game UI (existingSession)');
+            }
           }
 
           unsubscribeRounds = await subscribeToGameRounds(existingSession.id, (updatedRounds) => {
@@ -61,14 +64,15 @@ function App() {
 
         unsubscribeGameSession = await subscribeToGameSession(room.id, async (gameSession) => {
           if (gameSession && mounted) {
-            console.log('Game session update received');
+            console.log('[Sync] Game session update received (subscription)', gameSession);
             setSession(gameSession);
-            if (appState === 'lobby') {
+            // Always transition to game if session exists and not already in game
+            if (appState !== 'game') {
               const currentRounds = await getGameRounds(gameSession.id);
               if (mounted) {
                 setRounds(currentRounds);
                 setAppState('game');
-
+                console.log('[Sync] Transitioning to game UI (subscription)');
                 if (unsubscribeRounds) unsubscribeRounds();
                 unsubscribeRounds = await subscribeToGameRounds(gameSession.id, (updatedRounds) => {
                   if (mounted) {
@@ -116,7 +120,7 @@ function App() {
       if (unsubscribeRounds) unsubscribeRounds();
       supabase.removeChannel(channel);
     };
-  }, [room?.id, appState]);
+  }, [room?.id, appState, session]);
 
   const handleCreateRoom = async () => {
     const { room: newRoom } = await createRoom();
@@ -231,13 +235,14 @@ function App() {
     const pollInterval = setInterval(async () => {
       const gameSession = await getGameSession(room.id);
       if (gameSession && !session) {
-        console.log('Game session detected via polling fallback');
+        console.log('[Polling] Game session detected via polling fallback', gameSession);
         setSession(gameSession);
         const gameRounds = await getGameRounds(gameSession.id);
         setRounds(gameRounds);
         setAppState('game');
+        console.log('[Polling] Transitioning to game UI (polling)');
       }
-    }, 1500);
+    }, 1000); // Slightly faster polling
 
     return () => clearInterval(pollInterval);
   }, [appState, room, session]);

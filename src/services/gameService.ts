@@ -118,13 +118,20 @@ export const subscribeToGameSession = async (
         filter: `room_id=eq.${roomId}`
       },
       async () => {
+        console.log('Game session change detected for room:', roomId);
         const session = await getGameSession(roomId);
+        console.log('Updated session:', session);
         onSessionUpdate(session);
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('Game session subscription established for room:', roomId);
+      }
+    });
 
   return () => {
+    console.log('Unsubscribing from game session changes for room:', roomId);
     subscription.unsubscribe();
   };
 };

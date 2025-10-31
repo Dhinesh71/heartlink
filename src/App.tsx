@@ -22,38 +22,38 @@ function App() {
   useEffect(() => {
     if (!room) return;
 
-    // Get initial players
-    getPlayersInRoom(room.id).then(setPlayers);
-
-    // Subscribe to player changes using the helper
     let unsubscribePlayers: (() => void) | undefined;
-    subscribeToRoom(room.id, setPlayers).then(unsub => {
-      unsubscribePlayers = unsub;
-    });
-
-    // Check if game session already exists
-    getGameSession(room.id).then(existingSession => {
-      if (existingSession) {
-        console.log('Existing game session found:', existingSession);
-        setSession(existingSession);
-        getGameRounds(existingSession.id).then(setRounds);
-        setAppState('game');
-      }
-    });
-
-    // Subscribe to game session changes - this notifies ALL players when game starts
     let unsubscribeGameSession: (() => void) | undefined;
-    subscribeToGameSession(room.id, async (gameSession) => {
-      if (gameSession) {
-        console.log('Game session detected:', gameSession);
-        setSession(gameSession);
-        const currentRounds = await getGameRounds(gameSession.id);
-        setRounds(currentRounds);
+
+    const initializeSubscriptions = async () => {
+      // Get initial players
+      const initialPlayers = await getPlayersInRoom(room.id);
+      setPlayers(initialPlayers);
+
+      // Subscribe to player changes
+      unsubscribePlayers = await subscribeToRoom(room.id, setPlayers);
+
+      // Check if game session already exists
+      const existingSession = await getGameSession(room.id);
+      if (existingSession) {
+        setSession(existingSession);
+        const existingRounds = await getGameRounds(existingSession.id);
+        setRounds(existingRounds);
         setAppState('game');
       }
-    }).then(unsub => {
-      unsubscribeGameSession = unsub;
-    });
+
+      // Subscribe to game session changes - this notifies ALL players when game starts
+      unsubscribeGameSession = await subscribeToGameSession(room.id, async (gameSession) => {
+        if (gameSession) {
+          setSession(gameSession);
+          const currentRounds = await getGameRounds(gameSession.id);
+          setRounds(currentRounds);
+          setAppState('game');
+        }
+      });
+    };
+
+    initializeSubscriptions();
 
     // Subscribe to room status changes
     const channel = supabase
@@ -66,15 +66,14 @@ function App() {
           table: 'rooms',
           filter: `id=eq.${room.id}`,
         },
-        async (payload) => {
-          console.log('Room update:', payload);
+        (payload) => {
           const updatedRoom = payload.new as Room;
           setRoom(updatedRoom);
         }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Room subscription established for room:', room.id);
+          console.log('Room and subscriptions established');
         }
       });
 
@@ -123,11 +122,25 @@ function App() {
   const handleStartGame = async (mode: GameMode) => {
     if (!room || !currentPlayer?.is_creator) return;
 
-    await updateRoomStatus(room.id, 'playing');
+    try {
+      // Step 1: Update room status to indicate game is starting
+      await updateRoomStatus(room.id, 'playing');
 
-    const { session: newSession } = await createGameSession(room.id, mode);
-    if (newSession) {
-      await initializeFirstPlayer(newSession.id, players[0].id);
+      // Step 2: Create game session - this triggers realtime subscription for all players
+      const { session: newSession, error } = await createGameSession(room.id, mode);
+
+      if (error) {
+        console.error('Failed to create game session:', error);
+        return;
+      }
+
+      if (newSession) {
+        // Step 3: Initialize the first player's turn
+        await initializeFirstPlayer(newSession.id, players[0].id);
+        console.log('Game started successfully by host');
+      }
+    } catch (err) {
+      console.error('Error starting game:', err);
     }
   };
 

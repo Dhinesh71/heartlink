@@ -90,7 +90,7 @@ export const subscribeToRoom = async (
   onPlayersUpdate: (players: Player[]) => void
 ): Promise<() => void> => {
   const supabase = await getSupabase();
-  
+
   // Subscribe to players table changes for this room
   const subscription = supabase
     .channel(`room:${roomId}`)
@@ -103,15 +103,22 @@ export const subscribeToRoom = async (
         filter: `room_id=eq.${roomId}`
       },
       async () => {
+        console.log('Player change detected for room:', roomId);
         // Fetch the updated players list
         const players = await getPlayersInRoom(roomId);
+        console.log('Updated players:', players);
         onPlayersUpdate(players);
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('Room subscription established for room:', roomId);
+      }
+    });
 
   // Return unsubscribe function
   return () => {
+    console.log('Unsubscribing from room changes for room:', roomId);
     subscription.unsubscribe();
   };
 };

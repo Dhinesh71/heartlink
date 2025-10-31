@@ -84,3 +84,34 @@ export const updateRoomStatus = async (roomId: string, status: string): Promise<
     .update({ status })
     .eq('id', roomId);
 };
+
+export const subscribeToRoom = async (
+  roomId: string,
+  onPlayersUpdate: (players: Player[]) => void
+): Promise<() => void> => {
+  const supabase = await getSupabase();
+  
+  // Subscribe to players table changes for this room
+  const subscription = supabase
+    .channel(`room:${roomId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'players',
+        filter: `room_id=eq.${roomId}`
+      },
+      async () => {
+        // Fetch the updated players list
+        const players = await getPlayersInRoom(roomId);
+        onPlayersUpdate(players);
+      }
+    )
+    .subscribe();
+
+  // Return unsubscribe function
+  return () => {
+    subscription.unsubscribe();
+  };
+};

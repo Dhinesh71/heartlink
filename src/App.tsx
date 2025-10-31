@@ -26,6 +26,7 @@ function App() {
     // First, get the initial state
     getPlayersInRoom(room.id).then(setPlayers);
 
+    // Create a single channel for both players and room updates
     const channel = supabase
       .channel(`room:${room.id}`)
       .on(
@@ -36,7 +37,8 @@ function App() {
           table: 'players',
           filter: `room_id=eq.${room.id}`,
         },
-        async () => {
+        async (payload) => {
+          console.log('Players update:', payload);
           const updatedPlayers = await getPlayersInRoom(room.id);
           setPlayers(updatedPlayers);
         }
@@ -44,14 +46,17 @@ function App() {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // Listen to all events
           schema: 'public',
           table: 'rooms',
           filter: `id=eq.${room.id}`,
         },
         async (payload) => {
+          console.log('Room update:', payload);
           const updatedRoom = payload.new as Room;
           setRoom(updatedRoom);
+          
+          // If the room status changed to playing, set up the game session
           if (updatedRoom.status === 'playing') {
             const gameSession = await getGameSession(room.id);
             if (gameSession) {
@@ -63,14 +68,15 @@ function App() {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Real-time subscription established');
+          console.log('Real-time subscription established for room:', room.id);
         }
       });
 
     return () => {
+      console.log('Cleaning up subscription for room:', room.id);
       supabase.removeChannel(channel);
     };
-  }, [room]);
+  }, [room?.id]); // Only re-subscribe when room ID changes
 
   const handleCreateRoom = async () => {
     const { room: newRoom } = await createRoom();
@@ -101,25 +107,6 @@ function App() {
       // Fetch players immediately after adding new player
       const allPlayers = await getPlayersInRoom(room.id);
       setPlayers(allPlayers);
-      
-      // Subscribe to real-time player updates for this specific room
-      const playersChannel = supabase
-        .channel(`players:${room.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'players',
-            filter: `room_id=eq.${room.id}`,
-          },
-          async () => {
-            const updatedPlayers = await getPlayersInRoom(room.id);
-            setPlayers(updatedPlayers);
-          }
-        )
-        .subscribe();
-
       setAppState('lobby');
     }
   };

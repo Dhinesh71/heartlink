@@ -28,16 +28,16 @@ export const WelcomeScreen = ({ onCreateRoom, onJoinRoom }: WelcomeScreenProps) 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8 animate-fade-in">
+        <div className="text-center mb-6 sm:mb-8 animate-fade-in">
           <div className="flex justify-center mb-4">
-            <Heart className="w-16 h-16 text-[#e0b1cb] fill-[#e0b1cb] animate-pulse" />
+            <Heart className="w-12 h-12 sm:w-16 sm:h-16 text-[#e0b1cb] fill-[#e0b1cb] animate-pulse" />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-2">HeartLink</h1>
-          <p className="text-[#be95c4] text-lg">Truth or Dare for Hearts</p>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2">HeartLink</h1>
+          <p className="text-[#be95c4] text-base sm:text-lg">Truth or Dare for Hearts</p>
         </div>
 
         <div
-          className="backdrop-blur-md bg-white/10 rounded-3xl p-8 border border-white/20 mb-6"
+          className="backdrop-blur-md bg-white/10 rounded-3xl p-6 sm:p-8 border border-white/20 mb-6"
           style={{
             boxShadow: '0 8px 32px rgba(35, 25, 66, 0.3), 0 0 40px rgba(159, 134, 192, 0.2)',
           }}
@@ -79,7 +79,7 @@ export const WelcomeScreen = ({ onCreateRoom, onJoinRoom }: WelcomeScreenProps) 
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsJoining(false)}
-                  className="flex-1 px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-medium rounded-full
+                  className="flex-1 px-4 sm:px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-medium rounded-full text-sm sm:text-base
                              hover:bg-white/20 transition-all border border-white/20"
                 >
                   Back
@@ -87,7 +87,7 @@ export const WelcomeScreen = ({ onCreateRoom, onJoinRoom }: WelcomeScreenProps) 
                 <button
                   onClick={handleJoin}
                   disabled={roomCode.length !== 6 || isLoading}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#9f86c0] to-[#e0b1cb] text-white font-bold rounded-full
+                  className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-[#9f86c0] to-[#e0b1cb] text-white font-bold rounded-full text-sm sm:text-base
                              hover:shadow-[0_0_25px_rgba(224,177,203,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Joining...' : 'Join'}

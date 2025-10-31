@@ -23,12 +23,12 @@ export const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div
-          className="backdrop-blur-md bg-white/10 rounded-3xl p-8 border border-white/20"
+          className="backdrop-blur-md bg-white/10 rounded-3xl p-6 sm:p-8 border border-white/20"
           style={{
             boxShadow: '0 8px 32px rgba(35, 25, 66, 0.3), 0 0 40px rgba(159, 134, 192, 0.2)',
           }}
         >
-          <h2 className="text-3xl font-bold text-white text-center mb-6">Set Up Profile</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-6">Set Up Profile</h2>
 
           <div className="mb-6">
             <label className="block text-white/80 text-sm font-medium mb-2">Nickname</label>
@@ -45,12 +45,12 @@ export const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
 
           <div className="mb-8">
             <label className="block text-white/80 text-sm font-medium mb-3">Choose Avatar</label>
-            <div className="grid grid-cols-6 gap-3">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3">
               {AVATARS.map((avatar) => (
                 <button
                   key={avatar}
                   onClick={() => setSelectedAvatar(avatar)}
-                  className={`p-3 text-3xl rounded-2xl transition-all ${
+                  className={`p-2 sm:p-3 text-2xl sm:text-3xl rounded-2xl transition-all ${
                     selectedAvatar === avatar
                       ? 'bg-white/20 border-2 border-[#9f86c0] scale-110'
                       : 'bg-white/5 border-2 border-transparent hover:bg-white/10'

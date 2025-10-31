@@ -6,13 +6,13 @@ interface HeartMeterProps {
 
 export const HeartMeter = ({ level }: HeartMeterProps) => {
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto px-2 sm:px-0">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-white/80 text-sm font-medium">Connection Level</span>
-        <span className="text-[#e0b1cb] text-sm font-bold">{level}%</span>
+        <span className="text-white/80 text-xs sm:text-sm font-medium">Connection Level</span>
+        <span className="text-[#e0b1cb] text-xs sm:text-sm font-bold">{level}%</span>
       </div>
 
-      <div className="relative w-full h-6 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
+      <div className="relative w-full h-5 sm:h-6 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
         <div
           className="absolute top-0 left-0 h-full transition-all duration-1000 ease-out rounded-full"
           style={{
@@ -25,11 +25,11 @@ export const HeartMeter = ({ level }: HeartMeterProps) => {
         </div>
       </div>
 
-      <div className="flex items-center justify-center mt-4 gap-2">
+      <div className="flex items-center justify-center mt-3 sm:mt-4 gap-1.5 sm:gap-2">
         {[...Array(5)].map((_, i) => (
           <Heart
             key={i}
-            className={`w-6 h-6 transition-all duration-500 ${
+            className={`w-5 h-5 sm:w-6 sm:h-6 transition-all duration-500 ${
               level >= (i + 1) * 20
                 ? 'fill-[#e0b1cb] text-[#e0b1cb] scale-110'
                 : 'text-white/20'

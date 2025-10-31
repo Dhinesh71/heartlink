@@ -7,7 +7,7 @@ interface HistoryBoxProps {
 
 export const HistoryBox = ({ rounds }: HistoryBoxProps) => {
   return (
-    <div className="absolute right-4 top-4 bottom-4 w-72 backdrop-blur-md bg-white/10 rounded-2xl border border-white/20 overflow-hidden">
+    <div className="hidden lg:block absolute right-4 top-4 bottom-4 w-72 backdrop-blur-md bg-white/10 rounded-2xl border border-white/20 overflow-hidden">
       <div className="p-4 border-b border-white/20">
         <div className="flex items-center gap-2">
           <ScrollText className="w-5 h-5 text-white/60" />

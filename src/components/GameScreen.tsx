@@ -65,20 +65,20 @@ export const GameScreen = ({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 lg:pr-80">
       <div className="w-full max-w-2xl">
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-8">
           <HeartMeter level={session.heart_level} />
         </div>
         <HistoryBox rounds={rounds} />
 
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-            <span className="text-white/60 text-sm">Round {session.current_round + 1}</span>
-            <span className="text-white/40">•</span>
-            <span className="text-white font-medium">{activePlayer.avatar} {activePlayer.nickname}</span>
+        <div className="text-center mb-4 sm:mb-6">
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+            <span className="text-white/60 text-xs sm:text-sm">Round {session.current_round + 1}</span>
+            <span className="text-white/40 hidden sm:inline">•</span>
+            <span className="text-white font-medium text-sm sm:text-base">{activePlayer.avatar} {activePlayer.nickname}</span>
             {isSpectating && (
-              <span className="text-yellow-300 text-xs bg-yellow-300/20 px-2 py-1 rounded-full ml-2">
+              <span className="text-yellow-300 text-xs bg-yellow-300/20 px-2 py-1 rounded-full">
                 Your turn next
               </span>
             )}
@@ -86,7 +86,7 @@ export const GameScreen = ({
         </div>
 
         <div
-          className="backdrop-blur-md bg-white/10 rounded-3xl p-8 border border-white/20 flex items-center justify-center min-h-[400px]"
+          className="backdrop-blur-md bg-white/10 rounded-3xl p-4 sm:p-8 border border-white/20 flex items-center justify-center min-h-[350px] sm:min-h-[400px]"
           style={{
             boxShadow: '0 8px 32px rgba(35, 25, 66, 0.3), 0 0 40px rgba(159, 134, 192, 0.2)',
           }}

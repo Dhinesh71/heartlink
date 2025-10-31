@@ -100,3 +100,31 @@ export const completeGameSession = async (sessionId: string): Promise<void> => {
     .update({ completed_at: new Date().toISOString() })
     .eq('id', sessionId);
 };
+
+export const subscribeToGameSession = async (
+  roomId: string,
+  onSessionUpdate: (session: GameSession | null) => void
+): Promise<() => void> => {
+  const supabase = await getSupabase();
+
+  const subscription = supabase
+    .channel(`game-session:${roomId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'game_sessions',
+        filter: `room_id=eq.${roomId}`
+      },
+      async () => {
+        const session = await getGameSession(roomId);
+        onSessionUpdate(session);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    subscription.unsubscribe();
+  };
+};

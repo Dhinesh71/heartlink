@@ -5,7 +5,7 @@ import { LobbyScreen } from './components/LobbyScreen';
 import { GameScreen } from './components/GameScreen';
 import { MemoryBox } from './components/MemoryBox';
 import { createRoom, joinRoom, addPlayer, getPlayersInRoom, updateRoomStatus, subscribeToRoom } from './services/roomService';
-import { createGameSession, getGameSession, createGameRound, updateHeartLevel, updateCurrentRound, getGameRounds, completeGameSession } from './services/gameService';
+import { createGameSession, getGameSession, createGameRound, updateHeartLevel, updateCurrentRound, getGameRounds, completeGameSession, subscribeToGameSession } from './services/gameService';
 import { supabase } from './lib/supabase';
 import type { Room, Player, GameSession, GameMode, GameRound } from './types/game';
 
@@ -31,7 +31,18 @@ function App() {
       unsubscribePlayers = unsub;
     });
 
-    // Subscribe to room status changes (for game start)
+    // Subscribe to game session changes - this notifies ALL players when game starts
+    let unsubscribeGameSession: (() => void) | undefined;
+    subscribeToGameSession(room.id, (gameSession) => {
+      if (gameSession && gameSession.started_at) {
+        setSession(gameSession);
+        setAppState('game');
+      }
+    }).then(unsub => {
+      unsubscribeGameSession = unsub;
+    });
+
+    // Subscribe to room status changes
     const channel = supabase
       .channel(`room-status:${room.id}`)
       .on(
@@ -46,23 +57,17 @@ function App() {
           console.log('Room update:', payload);
           const updatedRoom = payload.new as Room;
           setRoom(updatedRoom);
-          if (updatedRoom.status === 'playing') {
-            const gameSession = await getGameSession(room.id);
-            if (gameSession) {
-              setSession(gameSession);
-              setAppState('game');
-            }
-          }
         }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Room status subscription established for room:', room.id);
+          console.log('Room subscription established for room:', room.id);
         }
       });
 
     return () => {
       if (unsubscribePlayers) unsubscribePlayers();
+      if (unsubscribeGameSession) unsubscribeGameSession();
       supabase.removeChannel(channel);
     };
   }, [room?.id]);
